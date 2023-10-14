@@ -1,0 +1,171 @@
+default:
+  tags:
+    - devops-dev
+
+.default_rules:
+  rules:
+    - if: $CI_PIPELINE_TRIGGERED
+      when: never
+
+stages:
+  - pre-scans
+  - version
+  - deploy
+  - build & deploy doc
+
+variables:
+  TERRAFORM_MODULE_DIR: modules/${MOUDLE_NAME} # The path to your Terraform module
+  TERRAFORM_MODULE_NAME: ${MOUDLE_NAME} # The name of your Terraform module
+  MOUDLE_NAME:
+    value: ""
+    description: "Name of tf module in project. ex: cf - NOTE: Name cannot contain spaces or special characters"
+  TERRAFORM_MODULE_SYSTEM:
+    value: "aws"
+    description: "The system or provider your Terraform module targets (ex. local, aws, google)"
+  CREATE_TAG:
+    value: "true"
+    description: "Set to 'true' to create tag"
+
+version:check:
+  stage: version
+  image: alpine/git
+  script:
+    - git fetch --tags
+    - export CURRENT_TAG=$( git tag -l --sort=committerdate | grep -E "^([.0-9]+[0-9]+)-${MOUDLE_NAME}$" | tail -1 )
+    - echo "CURRENT_TAG=$CURRENT_TAG"
+    - echo "CURRENT_TAG=$CURRENT_TAG" >> tag.env
+  only:
+    variables:
+      - $MOUDLE_NAME != ""
+  artifacts:
+    reports:
+      dotenv: tag.env
+
+version:generate:
+  stage: version
+  image: bash
+  needs:
+    - version:check
+  dependencies:
+    - version:check
+  script: 
+    - |-
+      echo "CURRENT_TAG=$CURRENT_TAG"
+      if [[ $CREATE_TAG != "true" ]]; then
+        echo "NEW_TAG=$CURRENT_TAG" >> tag.env
+        exit 0
+      fi
+      major=0
+      minor=0
+      build=0
+      regex="([0-9]+).([0-9]+).([0-9]+)"
+      if [[ $CURRENT_TAG =~ $regex ]]; then
+        major="${BASH_REMATCH[1]}"
+        minor="${BASH_REMATCH[2]}"
+        build="${BASH_REMATCH[3]}"
+      fi
+      if [[ $build < 9 ]]; then
+        build=$(echo $build + 1 | bc)
+      elif [[ $build == 9 ]]; then
+        if [[ $minor == 9 ]]; then
+          build=0
+          minor=0
+          major=$(echo $major + 1 | bc)
+        else
+          build=0
+          minor=$(echo $minor + 1 | bc)
+        fi
+      else
+        echo "error"
+        exit -1
+      fi
+      export NEW_TAG=${major}.${minor}.${build}-${MOUDLE_NAME}
+      echo "new version: ${major}.${minor}.${build}"
+      echo "NEW_TAG=$NEW_TAG"
+      echo "NEW_TAG=$NEW_TAG" >> tag.env
+  only:
+    variables:
+      - $MOUDLE_NAME != ""
+  artifacts:
+    reports:
+      dotenv: tag.env
+
+deploy:create_new_tag:
+  stage: deploy
+  image: alpine/git
+  before_script:
+    - git config --global user.name "${GITLAB_USER_NAME}"
+    - git config --global user.email "${GITLAB_USER_EMAIL}"
+  dependencies:
+    - version:generate
+  script:
+    - echo "NEW_TAG=$NEW_TAG"
+    - git tag $NEW_TAG
+    - git push --tags https://root:$ACCESS_TOKEN@$CI_SERVER_HOST/$CI_PROJECT_PATH.git
+  only:
+    variables:
+      - ($MOUDLE_NAME != "" && $CREATE_TAG == "true")
+
+# you have to always create new tag, if not it will fail to push version to modules
+deploy:upload:
+  stage: deploy
+  image: curlimages/curl:latest
+  dependencies:
+    - version:generate
+  before_script:
+    - echo "NEW_TAG=$NEW_TAG"
+    - export TERRAFORM_MODULE_VERSION=$NEW_TAG
+  script:
+    - |-
+      tar -cvzf ${TERRAFORM_MODULE_NAME}-${TERRAFORM_MODULE_SYSTEM}-${TERRAFORM_MODULE_VERSION}.tgz -C ${TERRAFORM_MODULE_DIR} --exclude=./.git .
+      export http_code=$( curl --header "JOB-TOKEN: ${CI_JOB_TOKEN}" --upload-file ${TERRAFORM_MODULE_NAME}-${TERRAFORM_MODULE_SYSTEM}-${TERRAFORM_MODULE_VERSION}.tgz ${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/terraform/modules/${TERRAFORM_MODULE_NAME}/${TERRAFORM_MODULE_SYSTEM}/${TERRAFORM_MODULE_VERSION}/file -o /dev/null -w '%{http_code}\n' -s )
+      echo "http_code=$http_code"
+      # 201 - the request has succeeded and has led to the creation of a resource
+      regex="\b20.*\b" 
+      if [[ $http_code =~ $regex ]]; then
+        echo "OK"
+      else
+        curl --header "JOB-TOKEN: ${CI_JOB_TOKEN}" --upload-file ${TERRAFORM_MODULE_NAME}-${TERRAFORM_MODULE_SYSTEM}-${TERRAFORM_MODULE_VERSION}.tgz ${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/terraform/modules/${TERRAFORM_MODULE_NAME}/${TERRAFORM_MODULE_SYSTEM}/${TERRAFORM_MODULE_VERSION}/file
+        echo "ERROR"
+        exit 1
+      fi
+  only:
+    variables:
+      - $MOUDLE_NAME != ""
+
+doc:Build website:
+  stage: build & deploy doc
+  image: python:3.8-buster
+  before_script:
+    - pip install mkdocs
+    - pip install -r requirements.txt
+  script:
+    - mkdocs build
+  only:
+    variables:
+      - $MOUDLE_NAME != ""
+  artifacts:
+    paths:
+      - site
+     
+doc:deploy in CF:
+  stage: build & deploy doc
+  image: node:19
+  script:
+    - npm install -g wrangler --unsafe-perm=true
+    - wrangler pages publish site --project-name=terraform-modules --commit-dirty=true
+  needs:
+    - doc:Build website
+  dependencies:
+    - doc:Build website
+  only:
+    variables:
+      - $MOUDLE_NAME != ""
+  environment:
+    name: documentation
+    url: https://head.terraform-modules.pages.dev
+
+include:
+  - project: security/security-ci-cd-templates
+    file: /qredo-security.gitlab-ci.yml
+    ref: master

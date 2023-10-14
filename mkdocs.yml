@@ -1,0 +1,73 @@
+site_name: Terraform modules
+
+repo_url: https://gitlab.qredo.com/devops/terraform-modules
+copyright: Qredo Limited &copy; 2022
+
+theme:
+  name: material
+  #custom_dir: overrides
+  logo: assets/images/logo.png
+  favicon: assets/images/favicon.ico
+  palette:
+    primary: black
+  font:
+    text: Nunito
+    code: Nunito Mono
+  language: en
+  features:
+    - navigation.instant
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.sections
+    - navigation.expand
+  icon:
+    repo: fontawesome/brands/github
+
+nav:
+  - General information:  index.md
+  - How to use the modules: how-to-use-modules.md
+  - CF Pages: cfpages.md
+  - Nats cluster: nats-cluster.md
+  - Redis: redis.md
+
+markdown_extensions:
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_div_format
+  - pymdownx.highlight
+  - pymdownx.superfences
+  - pymdownx.caret
+  - pymdownx.mark
+  - pymdownx.tilde
+  - admonition
+  - pymdownx.tabbed
+  - pymdownx.details
+  - footnotes
+  - toc:
+      permalink: true
+
+plugins:
+  - search
+  - git-revision-date
+  - section-index
+  - render_swagger
+
+extra:
+  #version:
+  #  provider: mike # https://squidfunk.github.io/mkdocs-material/setup/setting-up-versioning/#versioning
+  social:
+    - icon: fontawesome/brands/twitter
+      link: https://twitter.com/QredoNetwork
+    - icon: fontawesome/brands/linkedin
+      link: https://www.linkedin.com/company/qredo/
+    - icon: fontawesome/brands/github
+      link: https://github.com/qredo
+
+extra_css:
+  - stylesheets/extra.css
+  - https://unpkg.com/mermaid/dist/mermaid.css
+
+extra_javascript:
+  - https://unpkg.com/mermaid/dist/mermaid.min.js

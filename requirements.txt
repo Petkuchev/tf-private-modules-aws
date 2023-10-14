@@ -1,0 +1,5 @@
+mkdocs-material
+mkdocs-git-revision-date-plugin
+mkdocs-section-index
+mkdocs-render-swagger-plugin
+
