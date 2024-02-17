@@ -106,3 +106,9 @@ variable "enable_key_rotation" {
   description = "Specifies whether key rotation is enabled. Defaults to false."
 }
 
+variable "at_rest_encryption_enabled" {
+  type = bool
+  default = true
+  description = "Enable at rest encryption. True by default."
+}
+

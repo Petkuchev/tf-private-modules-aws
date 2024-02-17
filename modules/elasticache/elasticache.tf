@@ -9,7 +9,7 @@ resource "aws_elasticache_replication_group" "this" {
   subnet_group_name          = aws_elasticache_subnet_group.this.name
   security_group_ids         = [aws_security_group.redis.id]
   transit_encryption_enabled = var.tansit_encryption
-  at_rest_encryption_enabled = true
+  at_rest_encryption_enabled = var.at_rest_encryption_enabled
   kms_key_id                 = aws_kms_key.redis.arn
   replicas_per_node_group    = var.replicas_per_node_group
   num_node_groups            = var.num_node_groups

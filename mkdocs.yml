@@ -1,7 +1,6 @@
 site_name: Terraform modules
 
-repo_url: https://gitlab.qredo.com/devops/terraform-modules
-copyright: Qredo Limited &copy; 2022
+copyright: Bogomil Petkuchev
 
 theme:
   name: material
@@ -24,11 +23,9 @@ theme:
     repo: fontawesome/brands/github
 
 nav:
-  - General information:  index.md
-  - How to use the modules: how-to-use-modules.md
-  - CF Pages: cfpages.md
-  - Nats cluster: nats-cluster.md
-  - Redis: redis.md
+  - Home: index.md
+  - AWS:
+    - Elasticache: redis.md
 
 markdown_extensions:
   - pymdownx.superfences:
@@ -50,20 +47,15 @@ markdown_extensions:
 
 plugins:
   - search
-  - git-revision-date
+  - git-revision-date-localized:
+      type: date
   - section-index
   - render_swagger
 
 extra:
-  #version:
-  #  provider: mike # https://squidfunk.github.io/mkdocs-material/setup/setting-up-versioning/#versioning
   social:
-    - icon: fontawesome/brands/twitter
-      link: https://twitter.com/QredoNetwork
     - icon: fontawesome/brands/linkedin
-      link: https://www.linkedin.com/company/qredo/
-    - icon: fontawesome/brands/github
-      link: https://github.com/qredo
+      link: https://www.linkedin.com/in/bopetkuchev/
 
 extra_css:
   - stylesheets/extra.css
