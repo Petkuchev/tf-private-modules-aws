@@ -1,5 +1,6 @@
 # Local .terraform directories
 **/.terraform/*
+.terraform
 
 # Ignore lock files
 *.terraform.lock*
